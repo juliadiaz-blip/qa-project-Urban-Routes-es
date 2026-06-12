@@ -1,3 +1,9 @@
+#Entorno virtual
+.venv/
+
+#PyCharm
 .idea/
-__pycache__/
+
+#Archivos Python
+pycache/
 *.pyc
