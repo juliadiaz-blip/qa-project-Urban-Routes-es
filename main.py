@@ -1,74 +1,88 @@
-import data
-
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
+import data
+from data import FROM_STREET, TO_STREET, DATA_URL
 from pages import UrbanRoutesPage
 
 
 class TestUrbanRoutes:
 
     driver = None
+    urbanroutespage = None
 
     @classmethod
     def setup_class(cls):
-
-        from selenium.webdriver.chrome.options import Options
-
         options = Options()
+        options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
-        options.set_capability(
-            "goog:loggingPrefs",
-            {"performance": "ALL"}
-        )
+        service = Service(ChromeDriverManager().install())
 
         cls.driver = webdriver.Chrome(
+            service=service,
             options=options
         )
 
-        def test_set_route(self):
-            self.driver.get(data.urban_routes_url)
-            routes_page = UrbanRoutesPage(self.driver)
-            address_from = data.address_from
-            address_to = data.address_to
-            routes_page.set_route(address_from, address_to)
-            assert routes_page.get_from() == address_from
-            assert routes_page.get_to() == address_to
+        cls.driver.get(DATA_URL)
 
+        cls.urbanroutespage = UrbanRoutesPage(cls.driver)
 
+    def setup_method(self):
+        self.driver.get(DATA_URL)
 
-    def test_call_taxi(self):
+    def preparar_pedido(self):
+        self.urbanroutespage.seleccionar_tarifa_comfort()
+        self.urbanroutespage.click_phone_number()
 
-        self.driver.get(data.urban_routes_url)
+    def test_set_route(self):
+        self.urbanroutespage.set_route()
 
-        routes_page = UrbanRoutesPage(self.driver)
+        assert self.urbanroutespage.get_from() == FROM_STREET
+        assert self.urbanroutespage.get_to() == TO_STREET
 
-        routes_page.wait_for_load_home_page()
+    def test_verificar_tarifa_confort(self):
+        self.urbanroutespage.set_route()
+        self.urbanroutespage.click_button_reservar()
+        self.urbanroutespage.click_tarifa_comfort()
 
-        routes_page.set_route(
-            data.address_from,
-            data.address_to
-        )
+        assert self.urbanroutespage.obtener_texto_tarifa_comfort() == "Comfort"
 
-        routes_page.click_call_taxi_button()
+    def test_agregar_tarjeta(self):
+        self.preparar_pedido()
+        self.urbanroutespage.click_payment_method_button()
+        self.urbanroutespage.click_add_card_button()
+        self.urbanroutespage.set_card()
 
-    def test_select_comfort_rate(self):
+        assert self.urbanroutespage.get_phone_value() == data.PHONE_NUMBER
 
-        self.driver.get(data.urban_routes_url)
+    def test_agregar_tarjeta(self):
+        self.preparar_pedido()
+        self.urbanroutespage.click_payment_method_button()
+        self.urbanroutespage.click_add_card_button()
+        self.urbanroutespage.set_card()
 
-        routes_page = UrbanRoutesPage(self.driver)
+        assert self.urbanroutespage.get_payment_method_text() == "tarjeta"
 
-        routes_page.wait_for_load_home_page()
+    def test_mensaje_para_conductor(self):
+        self.preparar_pedido()
+        self.urbanroutespage.set_driver_message()
 
-        routes_page.set_route(
-            data.address_from,
-            data.address_to
-        )
+        assert self.urbanroutespage.get_driver_message_text() == data.MESSAGE_FOR_DRIVER
 
-        routes_page.click_call_taxi_button()
+    def test_manta_y_panuelos(self):
+        self.preparar_pedido()
+        self.urbanroutespage.click_blanket_and_tissues()
 
-        routes_page.click_comfort_rate()
+        assert self.urbanroutespage.get_blanket_status()
+
+    def test_pedir_dos_helados(self):
+        self.preparar_pedido()
+        self.urbanroutespage.add_ice_cream()
+
+        assert self.urbanroutespage.get_ice_cream_count() == 2
 
     @classmethod
     def teardown_class(cls):
-
         cls.driver.quit()
